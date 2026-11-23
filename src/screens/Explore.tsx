@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
+import type { Profile } from '../data/journey';
 import type { ModelInputs, ModelResult } from '../model/effortModel';
 import { SIGMOID_K, interpret } from '../model/effortModel';
 import type { Horizon, TrajectoryParams } from '../model/trajectory';
-import { HORIZONS, equilibrium, simulateTrajectory } from '../model/trajectory';
+import { ALWAYS, HORIZONS, NEVER, equilibrium, sessionPlan, simulateTrajectory, withProfile } from '../model/trajectory';
+import { PencilDefs, SessionSketch } from '../ui/Sketches';
 import AnimatedNumber from '../ui/AnimatedNumber';
 import SigmoidPlot from '../ui/SigmoidPlot';
 import Slider from '../ui/Slider';
@@ -16,27 +18,31 @@ interface Props {
   inputs: ModelInputs;
   setInputs: (i: ModelInputs) => void;
   result: ModelResult;
-  pFollow: number;
+  profile: Profile;
   assumptions: Assumptions;
   setAssumptions: (a: Assumptions) => void;
   onReplay: () => void;
+  onOtherCategory: () => void;
 }
 
 const f2 = (n: number) => n.toFixed(2);
 
 /** The optional deeper layer: the brain region, two live experiments, and the evidence. */
-export default function Explore({ inputs, setInputs, result, pFollow, assumptions, setAssumptions, onReplay }: Props) {
+
+export default function Explore({ inputs, setInputs, result, profile, assumptions, setAssumptions, onReplay, onOtherCategory }: Props) {
   const [horizon, setHorizon] = useState<Horizon>('10mo');
   const spec = HORIZONS[horizon];
   const params: TrajectoryParams = useMemo(
-    () => ({ R: result.R, E: result.E, C0: result.C, pChoices: pFollow, ...assumptions }),
-    [result, pFollow, assumptions],
+    () => ({ R: result.R, E: result.E, C0: result.C, profile, ...assumptions }),
+    [result, profile, assumptions],
   );
+  const session = useMemo(() => sessionPlan(params), [params]);
   const { series, eq } = useMemo(() => {
+    if (horizon === '10m') return { series: [] as ChartSeries[], eq: 0.5 };
     const series: ChartSeries[] = [
-      { id: 'hi', label: 'If every moment were started', points: simulateTrajectory(params, horizon, 1).points, variant: 'ref-high' },
-      { id: 'lo', label: 'If every moment were postponed', points: simulateTrajectory(params, horizon, 0).points, variant: 'ref-low' },
-      { id: 'main', label: 'Your modeled pattern', points: simulateTrajectory(params, horizon).points, variant: 'main' },
+      { id: 'hi', label: 'If every moment were taken on', points: simulateTrajectory(withProfile(params, ALWAYS), horizon).points, variant: 'ref-high' },
+      { id: 'lo', label: 'If every moment were set aside', points: simulateTrajectory(withProfile(params, NEVER), horizon).points, variant: 'ref-low' },
+      { id: 'main', label: 'Your modeled scenario', points: simulateTrajectory(params, horizon).points, variant: 'main' },
     ];
     return { series, eq: equilibrium(params) };
   }, [params, horizon]);
@@ -112,20 +118,36 @@ export default function Explore({ inputs, setInputs, result, pFollow, assumption
           <span className="mono small muted">Experiment 02</span>
           <Tag kind="hypothetical" />
         </div>
-        <h3 className="h3">Change the rules of repetition.</h3>
+        <h3 className="h3">Change the parameters and explore.</h3>
         <p className="body muted">
-          The timeline you saw depends on assumptions. Change them and see how much the hypothetical curve depends on
-          choices we made, not on you.
+          The timeline combines your reported pattern with assumptions about repetition. Change the rules and explore
+          another outcome — the curve depends as much on choices we made as on your answers.
         </p>
         <div className="horizon" role="tablist" aria-label="Time horizon">
-          {(Object.keys(HORIZONS) as Horizon[]).map((h) => (
+          {(['10m', '10mo', '10y'] as Horizon[]).map((h) => (
             <button key={h} role="tab" aria-selected={h === horizon} className={h === horizon ? 'on' : ''} onClick={() => setHorizon(h)}>
               {HORIZONS[h].label}
             </button>
           ))}
         </div>
-        <TrajectoryChart series={series} span={spec.span} ticks={spec.ticks} fmtX={spec.fmt} equilibrium={eq} />
-        <div className="legend">
+        {horizon === '10m' ? (
+          <div className="explore-session">
+            <PencilDefs />
+            <SessionSketch session={session} />
+            <p className="small">
+              {session.startAt === null
+                ? 'In these ten minutes the easier alternative wins, so no time goes to the task.'
+                : `${session.startAt === 0 ? 'Taken on right away' : `Taken on at minute ${session.startAt}`} · ${session.events.filter((e) => e.kind === 'resisted').length} distraction(s) continued through · about ${Math.round(session.minutes)} of 10 minutes on the task.`}
+            </p>
+            <p className="fine">
+              Chance of taking it on right away: {Math.round(session.s * 100)}% (half your reported pattern, half the
+              effort-reward tendency above). Move any slider and watch the session redraw.
+            </p>
+          </div>
+        ) : (
+          <TrajectoryChart series={series} span={spec.span} ticks={spec.ticks} fmtX={spec.fmt} equilibrium={eq} />
+        )}
+        <div className="legend" hidden={horizon === '10m'}>
           {series
             .slice()
             .reverse()
@@ -136,10 +158,11 @@ export default function Explore({ inputs, setInputs, result, pFollow, assumption
               </span>
             ))}
         </div>
+        <p className="label">Rules of repetition</p>
         <div className="sliders">
           <Slider label="Moments per day" value={assumptions.perDay} min={1} max={10} step={1} format={(v) => v.toFixed(0)} onChange={setAs('perDay')} />
-          <Slider label="Adaptation" hint="how much starting lightens the next effort" value={assumptions.adaptation} min={1} max={10} onChange={setAs('adaptation')} minLabel="slow" maxLabel="fast" />
-          <Slider label="Decay" hint="how quickly the pattern fades when postponing" value={assumptions.decay} min={1} max={10} onChange={setAs('decay')} minLabel="slow" maxLabel="fast" />
+          <Slider label="Adaptation" hint="how much each completed moment lightens the next effort" value={assumptions.adaptation} min={1} max={10} onChange={setAs('adaptation')} minLabel="slow" maxLabel="fast" />
+          <Slider label="Decay" hint="how much each set-aside moment weighs on the next" value={assumptions.decay} min={1} max={10} onChange={setAs('decay')} minLabel="slow" maxLabel="fast" />
         </div>
       </section>
 
@@ -156,9 +179,14 @@ export default function Explore({ inputs, setInputs, result, pFollow, assumption
           The model is a simplification. The question it points at — what makes the difficult thing feel worth doing — is
           real, and still being studied.
         </p>
-        <button className="btn btn-primary" onClick={onReplay}>
-          Replay the experience ↺
-        </button>
+        <div className="row-actions">
+          <button className="btn btn-primary" onClick={onReplay}>
+            Replay the experience ↺
+          </button>
+          <button className="btn btn-outline" onClick={onOtherCategory}>
+            Test another category →
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -5,14 +5,15 @@
  */
 
 import type { FactorKey } from '../model/categoryModel';
-import type { Domain } from './journey';
-import { DOMAINS } from './journey';
 
-/** Categories for the technical simulation: the original four plus four more. */
-export type LabCategory = Domain | 'creative' | 'finance' | 'health' | 'social';
+/** Categories for the technical simulation. */
+export type LabCategory = 'study' | 'work' | 'exercise' | 'chores' | 'creative' | 'finance' | 'health' | 'social';
 
 export const LAB_CATEGORIES: { id: LabCategory; label: string; noun: string }[] = [
-  ...DOMAINS.map(({ id, label, noun }) => ({ id, label, noun })),
+  { id: 'study', label: 'Studying', noun: 'studying' },
+  { id: 'work', label: 'Work', noun: 'a work task' },
+  { id: 'exercise', label: 'Exercise', noun: 'exercising' },
+  { id: 'chores', label: 'Everyday responsibilities', noun: 'an everyday responsibility' },
   { id: 'creative', label: 'Creative projects', noun: 'a creative project' },
   { id: 'finance', label: 'Personal finances', noun: 'sorting out your finances' },
   { id: 'health', label: 'Health appointments', noun: 'booking a health appointment' },

@@ -19,7 +19,7 @@ export default function Finale({ onExplore, onReplay, onOtherCategory }: Props) 
       <div className="start-inner">
         <h1 className="display reveal-1">But what actually happens inside your brain?</h1>
         <p className="lede reveal-2">
-          Discover the role of the anterior midcingulate cortex, effort, persistence and cognitive resilience.
+          Meet the brain region researchers link to effort and persistence — and see what science does, and does not, know.
         </p>
         <div className="start-cta reveal-3">
           <button className="btn btn-primary btn-lg" onClick={onExplore}>

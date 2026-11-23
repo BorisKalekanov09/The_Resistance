@@ -10,6 +10,8 @@ interface Props {
   steps?: readonly { question: string; options: readonly { id: string; label: string }[] }[];
   /** Line shown above the first question */
   kicker?: string;
+  /** Questions answered before this sequence (for the progress counter) */
+  offset?: number;
 }
 
 /** Screen 2 — one short personal question per screen. */
@@ -18,7 +20,8 @@ export default function Ask({
   value,
   onAnswer,
   steps = STEPS,
-  kicker = 'Let’s understand a little more about your everyday decisions.',
+  kicker = 'Four more. No right answers.',
+  offset = 0,
 }: Props) {
   const step = steps[index];
   const [picked, setPicked] = useState<string | null>(null);
@@ -47,12 +50,12 @@ export default function Ask({
     <section className="screen ask">
       <div className="q-meta reveal-1">
         <span className="mono small">
-          {index + 1}
-          <span className="muted">/{steps.length}</span>
+          {index + 1 + offset}
+          <span className="muted">/{steps.length + offset}</span>
         </span>
         <div className="q-progress" aria-hidden>
-          {steps.map((_, i) => (
-            <span key={i} className={i <= index ? 'on' : ''} />
+          {Array.from({ length: steps.length + offset }, (_, i) => (
+            <span key={i} className={i <= index + offset ? 'on' : ''} />
           ))}
         </div>
       </div>

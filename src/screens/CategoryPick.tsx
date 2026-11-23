@@ -8,15 +8,13 @@ export interface LabRun {
 }
 
 interface Props {
-  /** Category from the first test */
-  firstDomain: LabCategory | null;
   /** Technical runs done in this session */
   runs: LabRun[];
   onPick: (d: LabCategory) => void;
 }
 
 /** Pick a category for the technical simulation. */
-export default function CategoryPick({ firstDomain, runs, onPick }: Props) {
+export default function CategoryPick({ runs, onPick }: Props) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const i = Number(e.key) - 1;
@@ -46,7 +44,6 @@ export default function CategoryPick({ firstDomain, runs, onPick }: Props) {
               <span className="big-option-text">
                 {d.label}
                 <span className="pick-meta">
-                  {d.id === firstDomain && <span className="pick-tag">your first test</span>}
                   {last && <span className="pick-tag mono">last run {Math.round(last.P * 100)}%</span>}
                 </span>
               </span>

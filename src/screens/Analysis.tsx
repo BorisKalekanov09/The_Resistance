@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import type { LabCategory } from '../data/categoryLab';
 import { FACTOR_META, labCategory, labQuestions } from '../data/categoryLab';
-import type { Domain } from '../data/journey';
 import type { ModelResult } from '../model/effortModel';
 import { band } from '../model/effortModel';
 import type { CategoryResult, Choices, FactorKey } from '../model/categoryModel';
@@ -32,7 +31,7 @@ interface Props {
   domain: LabCategory;
   choices: Choices;
   /** Result of the first (simple) test, for comparison */
-  first: { domain: Domain | null; result: ModelResult };
+  first: { label: string; result: ModelResult };
   onAnother: () => void;
   onChangeAnswers: () => void;
   onReplay: () => void;
@@ -85,7 +84,6 @@ export default function Analysis({ domain, choices, first, onAnother, onChangeAn
   const ranked = [...FACTOR_KEYS].sort((a, b) => Math.abs(phi[b]) - Math.abs(phi[a]));
   const maxPhi = Math.max(0.001, ...FACTOR_KEYS.map((k) => Math.abs(phi[k])));
   const top = ranked[0];
-  const firstCat = labCategory(first.domain);
   const x = r.factors;
 
   return (
@@ -299,7 +297,7 @@ export default function Analysis({ domain, choices, first, onAnother, onChangeAn
           <span className="mono small muted">08 · Compared with your first test</span>
           <div className="compare">
             <div>
-              <span className="label">First test{firstCat ? ` · ${firstCat.label}` : ''}</span>
+              <span className="label">First test · {first.label}</span>
               <span className="stat mono">{pct(first.result.tendency)}%</span>
               <span className="fine">
                 3 inputs set by your answers: R = {first.result.R.toFixed(2)}, E = {first.result.E.toFixed(2)}, C ={' '}

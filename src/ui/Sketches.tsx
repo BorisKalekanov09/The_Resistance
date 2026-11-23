@@ -2,8 +2,8 @@
  * Hand-drawn, pencil-style SVG illustrations for the "research notebook" timeline.
  * The wobble comes from an SVG turbulence filter; strokes "draw in" via pathLength.
  */
-import type { CSSProperties, ReactNode, SVGProps } from 'react';
-import type { BrainShift } from '../model/brainShift';
+import type { ReactNode, SVGProps } from 'react';
+import type { Session, SessionEvent } from '../model/trajectory';
 
 /** Shared filters and hatch patterns. Render once per page. */
 export function PencilDefs() {
@@ -72,12 +72,11 @@ const STEM = ['M196,170 C200,190 202,206 206,228', 'M218,170 C218,190 222,206 22
 
 export type SketchMode = 'moment' | 'months' | 'years';
 
-export function BrainSketch({ mode, shift = null }: { mode: SketchMode; shift?: BrainShift | null }) {
-  const trend = shift && (shift.trend === 'weaker' || shift.trend === 'stronger') ? shift.trend : null;
-  const amt = Math.abs(shift?.amount ?? 0);
-  // weakened: shrinks up to ~35%; strengthened: swells up to ~25%
-  const scale = trend === 'weaker' ? 1 - 0.35 * amt : trend === 'stronger' ? 1 + 0.25 * amt : 1;
-  const shiftStyle = { ['--s' as string]: scale, ['--a' as string]: amt } as CSSProperties;
+/**
+ * The aMCC is drawn the same way on every page. The repetition model describes
+ * behavior, not tissue, so the region never grows, shrinks or changes colour.
+ */
+export function BrainSketch({ mode, caption }: { mode: SketchMode; caption?: string }) {
   return (
     <svg viewBox="0 0 330 268" className="sketch brain-sketch" role="img" aria-label="Pencil sketch of the brain seen from the middle, with the anterior midcingulate cortex shaded">
       <g filter="url(#pencil)">
@@ -95,43 +94,104 @@ export function BrainSketch({ mode, shift = null }: { mode: SketchMode; shift?: 
         ))}
         <Stroke d={CALLOSUM} className="lead" delay={0.4} />
         <Stroke d={CINGULATE} className="lead thin" delay={0.45} />
-        <g className={`amcc-shift ${trend ?? ''}`} style={shiftStyle}>
-          <path d={AMCC} fill="url(#hatch-rust)" className="fade-in late amcc-fill" />
-          {trend === 'weaker' && <path d={AMCC} fill="url(#hatch-lead)" className="amcc-grey" />}
-          {trend === 'stronger' && <path d={AMCC} className="amcc-glow" />}
-          <Stroke d={AMCC} className="rust amcc-line" delay={0.7} />
-        </g>
+        <path d={AMCC} fill="url(#hatch-rust)" className="fade-in late" />
+        <Stroke d={AMCC} className="rust" delay={0.7} />
       </g>
 
-      {/* annotation: the aMCC */}
       <g className="annot-sketch" filter="url(#pencil-soft)">
         <Stroke d="M160,86 C164,60 176,30 196,14" className="rust thin" delay={0.9} />
         <Hand x={200} y={16} className="rust-ink">aMCC</Hand>
-        {trend && (
-          <Hand x={200} y={36} className={`small-hand status-hand ${trend}`}>
-            {trend === 'weaker' ? '↓ ' : '↑ '}
-            {shift!.tag.toLowerCase()}
-          </Hand>
-        )}
+        <Hand x={200} y={36} className="small-hand">drawn the same on every page</Hand>
       </g>
 
       {mode === 'moment' && (
         <g filter="url(#pencil-soft)">
-          <Hand x={56} y={254}>one moment, one choice</Hand>
+          <Hand x={56} y={254}>one session, one pattern</Hand>
         </g>
       )}
       {mode === 'months' && (
         <g filter="url(#pencil-soft)">
           <Stroke d="M120,120 C96,140 120,168 150,150 C176,134 158,104 134,116 C116,126 132,152 156,140" className="rust thin" delay={1.0} />
-          <Hand x={56} y={254}>the same choice, again and again</Hand>
+          <Hand x={56} y={254}>the same pattern, again and again</Hand>
         </g>
       )}
       {mode === 'years' && (
         <g filter="url(#pencil-soft)">
-          <Hand x={56} y={246}>{trend === 'weaker' ? 'used less and less —' : trend === 'stronger' ? 'used again and again —' : 'a habit held steady —'}</Hand>
-          <Hand x={56} y={264}>an illustration, not a measurement</Hand>
+          <Hand x={56} y={246}>{caption ? `${caption} —` : 'repeated for years —'}</Hand>
+          <Hand x={56} y={264}>a behavioral model, not a brain prediction</Hand>
         </g>
       )}
+    </svg>
+  );
+}
+
+/* ---------- 10 minutes: one session with three distractions ---------- */
+
+export function SessionSketch({ session }: { session: Session }) {
+  const W = 330;
+  const H = 150;
+  const x0 = 22;
+  const x1 = W - 16;
+  const sx = (t: number) => x0 + (t / 10) * (x1 - x0);
+  const lane = 62;
+  const alt = 104;
+  const label: Record<SessionEvent['kind'], string> = {
+    resisted: 'kept going',
+    paused: 'paused',
+    stopped: 'stopped',
+    missed: '',
+  };
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="sketch session" role="img" aria-label={`Ten-minute session: ${session.minutes.toFixed(0)} of 10 minutes on the task`}>
+      <g filter="url(#pencil-soft)">
+        <Stroke d={`M${x0},${lane + 22} L${x1},${lane + 22}`} className="lead thin faint" />
+        {session.segments.map((g, i) => (
+          <Stroke key={i} d={`M${sx(g.from)},${lane} L${sx(g.to)},${lane}`} className="rust bold" delay={0.2 + i * 0.3} />
+        ))}
+        {session.segments.slice(1).map((g, i) => (
+          <Stroke
+            key={`r${i}`}
+            d={`M${sx(session.segments[i].to)},${lane} C${sx(session.segments[i].to) + 4},${lane - 22} ${sx(g.from) - 4},${lane - 22} ${sx(g.from)},${lane}`}
+            className="lead thin dashed"
+            delay={0.5}
+          />
+        ))}
+        {session.startAt === null && (
+          <Stroke d={`M${sx(0)},${alt} L${sx(10)},${alt}`} className="lead" delay={0.2} />
+        )}
+        {session.events.map((e) => {
+          const x = sx(e.t);
+          const y = session.startAt === null ? alt : lane;
+          return (
+            <g key={e.t} className={`tempt ${e.kind}`}>
+              <circle cx={x} cy={y - 26} r={5} className="tempt-dot fade-in late" />
+              <Stroke d={`M${x},${y - 20} L${x},${y - 6}`} className="lead thin" delay={0.8} />
+            </g>
+          );
+        })}
+      </g>
+      {session.events.map((e) =>
+        label[e.kind] ? (
+          <Hand key={e.t} x={sx(e.t)} y={lane - 36} anchor="middle" className={`small-hand ${e.kind === 'resisted' ? 'rust-hand' : ''}`}>
+            {label[e.kind]}
+          </Hand>
+        ) : null,
+      )}
+      {session.startAt === null && (
+        <Hand x={sx(5)} y={alt + 22} anchor="middle" className="small-hand">
+          an easier alternative instead
+        </Hand>
+      )}
+      {session.startAt !== null && session.startAt > 0 && (
+        <Hand x={sx(session.startAt)} y={lane + 16} anchor="middle" className="small-hand">
+          starts
+        </Hand>
+      )}
+      {[0, 5, 10].map((t) => (
+        <text key={t} x={sx(t)} y={H - 6} textAnchor="middle" className="axis-t">
+          {t} min
+        </text>
+      ))}
     </svg>
   );
 }
@@ -175,34 +235,45 @@ export function BalanceSketch({ reward, cost }: { reward: number; cost: number }
 
 /* ---------- 10 months: one mark per day ---------- */
 
-export function MonthsSketch({ days }: { days: { p: number }[] }) {
+export function MonthsSketch({ days }: { days: { direct: number; returned: number }[] }) {
   const cols = 30;
   const rows = Math.ceil(days.length / cols);
   const cell = 9.4;
   const x0 = 34;
   const y0 = 14;
-  // deterministic dithering: a day is "started" when the running expected count crosses a whole number
-  let acc = 0;
+  // deterministic dithering: a day gets a mark when the running expected count crosses a whole number
+  let accD = 0;
+  let accR = 0;
   const marks = days.map((d) => {
-    const before = Math.floor(acc);
-    acc += d.p;
-    return Math.floor(acc) > before;
+    const bD = Math.floor(accD);
+    const bR = Math.floor(accR);
+    accD += d.direct;
+    accR += d.returned;
+    if (Math.floor(accD) > bD) return 'direct' as const;
+    if (Math.floor(accR) > bR) return 'returned' as const;
+    return 'aside' as const;
   });
-  const perRow = Array.from({ length: rows }, (_, r) => marks.slice(r * cols, r * cols + cols).filter(Boolean).length);
+  const perRow = Array.from({ length: rows }, (_, r) => marks.slice(r * cols, r * cols + cols).filter((m) => m !== 'aside').length);
+  const done = marks.filter((m) => m !== 'aside').length;
 
   return (
-    <svg viewBox={`0 0 ${x0 + cols * cell + 44} ${y0 + rows * cell + 22}`} className="sketch months" role="img" aria-label={`${marks.filter(Boolean).length} of ${days.length} days marked as started`}>
+    <svg viewBox={`0 0 ${x0 + cols * cell + 44} ${y0 + rows * cell + 22}`} className="sketch months" role="img" aria-label={`${done} of ${days.length} days with the task completed`}>
       <g filter="url(#pencil-soft)">
-        {marks.map((on, i) => {
+        {marks.map((m, i) => {
           const c = i % cols;
           const r = Math.floor(i / cols);
           const x = x0 + c * cell + cell / 2;
           const y = y0 + r * cell + cell / 2;
-          return on ? (
-            <circle key={i} cx={x} cy={y} r={3.3} className="day on" style={{ animationDelay: `${0.004 * i}s` }} />
-          ) : (
-            <circle key={i} cx={x} cy={y} r={2.6} className="day off" style={{ animationDelay: `${0.004 * i}s` }} />
-          );
+          const style = { animationDelay: `${0.004 * i}s` };
+          if (m === 'direct') return <circle key={i} cx={x} cy={y} r={3.3} className="day on" style={style} />;
+          if (m === 'returned')
+            return (
+              <g key={i} className="day" style={style}>
+                <circle cx={x} cy={y} r={3.1} className="day-ring" />
+                <circle cx={x} cy={y} r={1.3} className="day-core" />
+              </g>
+            );
+          return <circle key={i} cx={x} cy={y} r={2.6} className="day off" style={style} />;
         })}
       </g>
       {perRow.map((n, r) => (
@@ -219,6 +290,17 @@ export function MonthsSketch({ days }: { days: { p: number }[] }) {
         mo
       </text>
     </svg>
+  );
+}
+
+/** Legend for the three kinds of day marks. */
+export function DayLegend() {
+  return (
+    <div className="day-legend small">
+      <span><i className="dl direct" />taken on and finished</span>
+      <span><i className="dl returned" />finished after returning</span>
+      <span><i className="dl aside" />set aside</span>
+    </div>
   );
 }
 
@@ -262,8 +344,8 @@ export function YearsSketch({
           {t}
         </text>
       ))}
-      <Hand x={sx(10)} y={sy(high[high.length - 1].y) - 6} anchor="end" className="small-hand">if you always started</Hand>
-      <Hand x={sx(10)} y={sy(low[low.length - 1].y) + 16} anchor="end" className="small-hand">if you always postponed</Hand>
+      <Hand x={sx(10)} y={sy(high[high.length - 1].y) - 6} anchor="end" className="small-hand">if every moment were taken on</Hand>
+      <Hand x={sx(10)} y={sy(low[low.length - 1].y) - 6} anchor="end" className="small-hand">if every moment were set aside</Hand>
     </svg>
   );
 }

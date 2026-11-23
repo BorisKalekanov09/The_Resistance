@@ -3,7 +3,6 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { ContactShadows, Html, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { AMCC_ANCHOR, getAnatomy, getLoadedHead, loadHead } from './anatomy';
-import type { BrainShift } from '../model/brainShift';
 
 /* ---------- Transparent head: porcelain shader over a 3D scan ---------- */
 
@@ -132,26 +131,16 @@ function makeGlowTexture() {
 interface BrainProps {
   highlight: boolean;
   showLabel: boolean;
-  status: BrainShift | null;
 }
 
-// aMCC colours: neutral, weakened (pale, greyish), strengthened (warmer, richer)
-const AMCC_BASE = new THREE.Color('#b4583c');
-const AMCC_WEAK = new THREE.Color('#a89a90');
-const AMCC_STRONG = new THREE.Color('#d2532c');
-const EMIT_BASE = new THREE.Color('#a5452b');
-const EMIT_WEAK = new THREE.Color('#5e5550');
-const EMIT_STRONG = new THREE.Color('#e0502a');
 
-function Brain({ highlight, showLabel, status }: BrainProps) {
+function Brain({ highlight, showLabel }: BrainProps) {
   const a = getAnatomy();
   const { camera } = useThree();
   const group = useRef<THREE.Group>(null);
   const amccGroup = useRef<THREE.Group>(null);
   const glowRef = useRef<THREE.Sprite>(null);
   const hl = useRef(0);
-  const sh = useRef(0);
-  const shiftTarget = status?.amount ?? 0;
 
   // centre of the aMCC tube: it shrinks / swells around this point, not around the origin
   const amccCenter = useMemo(() => {
@@ -230,33 +219,13 @@ function Brain({ highlight, showLabel, status }: BrainProps) {
         mat.depthWrite = mat.opacity > 0.97;
       }
     }
-    // illustrative long-term shift: −1 weakened … +1 strengthened (eased so the change is watched happening)
-    sh.current += (shiftTarget - sh.current) * Math.min(1, dt * 0.9);
-    const s = sh.current;
-    const weak = Math.max(0, -s);
-    const strong = Math.max(0, s);
-
-    if (amccGroup.current) {
-      // weakened: thinner and slightly shorter; strengthened: fuller
-      const thick = 1 - 0.5 * weak + 0.3 * strong;
-      const len = 1 - 0.14 * weak + 0.07 * strong;
-      amccGroup.current.scale.set(0.55 * thick, len * (1 - 0.15 * weak + 0.12 * strong), len);
-    }
-    amccMat.color.copy(AMCC_BASE).lerp(AMCC_WEAK, weak).lerp(AMCC_STRONG, strong);
-    amccMat.emissive.copy(EMIT_BASE).lerp(EMIT_WEAK, weak).lerp(EMIT_STRONG, strong);
-    xrayMat.color.copy(amccMat.color);
-
-    // a weakened region barely pulses; a strengthened one pulses fuller
-    const beat = pulse * (1 - 0.75 * weak + 0.4 * strong);
+    // the highlight is a fixed anatomical reference: it never grows, shrinks or changes colour
+    const beat = pulse;
     ccMat.opacity = h * 0.38;
-    amccMat.opacity = h * (1 - 0.25 * weak);
-    amccMat.emissiveIntensity = (0.25 - 0.15 * weak + 0.2 * strong) + 0.45 * beat * h;
-    xrayMat.opacity = h * (0.22 + 0.12 * beat) * (1 - 0.45 * weak + 0.2 * strong);
-    glow.opacity = h * (0.35 + 0.25 * beat) * (1 - 0.7 * weak + 0.35 * strong);
-    if (glowRef.current) {
-      const g = 1 - 0.35 * weak + 0.3 * strong;
-      glowRef.current.scale.set(0.75 * g, 0.55 * g, 1);
-    }
+    amccMat.opacity = h;
+    amccMat.emissiveIntensity = 0.25 + 0.45 * beat * h;
+    xrayMat.opacity = h * (0.22 + 0.12 * beat);
+    glow.opacity = h * (0.35 + 0.25 * beat);
   });
 
   return (
@@ -283,15 +252,6 @@ function Brain({ highlight, showLabel, status }: BrainProps) {
             <span className="annot-text">
               <b>aMCC</b>
               <i>anterior midcingulate cortex</i>
-              {status && (
-                <span className={`annot-status trend-${status.trend}`} key={`${status.trend}-${status.tag}`}>
-                  <em>
-                    {status.trend === 'weaker' ? '↓ ' : status.trend === 'stronger' ? '↑ ' : ''}
-                    {status.tag}
-                  </em>
-                  <small>{status.short}</small>
-                </span>
-              )}
             </span>
           </div>
         </Html>
@@ -393,11 +353,9 @@ export interface BrainSceneProps {
   highlight: boolean;
   showLabel: boolean;
   headOpacity?: number;
-  /** Illustrative long-term state of the aMCC highlight (trajectory screen only) */
-  status?: BrainShift | null;
 }
 
-export default function BrainScene({ highlight, showLabel, headOpacity = 1, status = null }: BrainSceneProps) {
+export default function BrainScene({ highlight, showLabel, headOpacity = 1 }: BrainSceneProps) {
   const distance = 5.7;
   return (
     <Canvas
@@ -422,7 +380,7 @@ export default function BrainScene({ highlight, showLabel, headOpacity = 1, stat
       <directionalLight position={[0, -3, 2]} intensity={0.25} color="#e8d6c8" />
 
       <group position={[0, 0.15, 0]}>
-        <Brain highlight={highlight} showLabel={showLabel} status={status} />
+        <Brain highlight={highlight} showLabel={showLabel} />
         <Head opacity={headOpacity} />
       </group>
 

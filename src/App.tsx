@@ -1,8 +1,8 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { LabCategory } from './data/categoryLab';
 import { labQuestions } from './data/categoryLab';
-import type { Answers, Frequency } from './data/journey';
-import { EMPTY_ANSWERS, STEPS, followThrough, inputsFromAnswers } from './data/journey';
+import type { Answers, ScenarioId, Today } from './data/journey';
+import { EMPTY_ANSWERS, SAMPLE_ANSWERS, SCENARIOS, STEPS, inputsFromAnswers, profileFromAnswers, scenarioFor } from './data/journey';
 import type { ModelInputs } from './model/effortModel';
 import { runModel } from './model/effortModel';
 import type { Choices } from './model/categoryModel';
@@ -28,7 +28,11 @@ const LAB_STAGES: Stage[] = ['sim', 'explore'];
 
 const DEFAULT_ASSUMPTIONS: Assumptions = { perDay: 3, adaptation: 5, decay: 5 };
 const TRANSITION_MS = 360;
-const DEMO_ANSWERS: Answers = { frequency: 'few', domain: 'study', reason: 'unmotivated', feeling: 'guilty' };
+/** `?s=engaging|returning|focused|lighter|mixed` picks the sample answers used by `?demo=…`. */
+function demoAnswers(): Answers {
+  const s = new URLSearchParams(window.location.search).get('s') as ScenarioId | null;
+  return SAMPLE_ANSWERS[s && s in SAMPLE_ANSWERS ? s : 'returning'];
+}
 const DEMO_CHOICES: Choices = { duration: 1, intensity: 2, value: 2, delay: 2, certainty: 1, energy: 2 };
 const DEMO_STAGES: Stage[] = ['ask', 'sim', 'time', 'end', 'explore', 'pick', 'analysis'];
 
@@ -46,8 +50,8 @@ export default function App() {
   const [stage, setStage] = useState<Stage>(demo ?? 'start');
   const [leaving, setLeaving] = useState<'all' | 'panel' | null>(null);
   const [askIndex, setAskIndex] = useState(0);
-  const [answers, setAnswers] = useState<Answers>(demo ? DEMO_ANSWERS : EMPTY_ANSWERS);
-  const [inputs, setInputs] = useState<ModelInputs>(() => inputsFromAnswers(demo ? DEMO_ANSWERS : EMPTY_ANSWERS));
+  const [answers, setAnswers] = useState<Answers>(() => (demo ? demoAnswers() : EMPTY_ANSWERS));
+  const [inputs, setInputs] = useState<ModelInputs>(() => inputsFromAnswers(demo ? demoAnswers() : EMPTY_ANSWERS));
   const [animateResult, setAnimateResult] = useState(demo === 'sim');
   const [horizon, setHorizon] = useState<Horizon>(() => {
     const h = new URLSearchParams(window.location.search).get('h');
@@ -66,6 +70,8 @@ export default function App() {
   const labSteps = useMemo(() => labQuestions(labDomain), [labDomain]);
   const firstResult = useMemo(() => runModel(inputsFromAnswers(answers)), [answers]);
   const answerInputs = useMemo(() => inputsFromAnswers(answers), [answers]);
+  const scenario = useMemo(() => scenarioFor(answers), [answers]);
+  const answerProfile = useMemo(() => profileFromAnswers(answers), [answers]);
   const result = useMemo(() => runModel(inputs), [inputs]);
 
   useEffect(() => {
@@ -94,7 +100,7 @@ export default function App() {
     [stage],
   );
 
-  const pickFrequency = useCallback((f: Frequency) => setAnswers((a) => ({ ...a, frequency: f })), []);
+  const pickToday = useCallback((t: Today) => setAnswers((a) => ({ ...a, today: t })), []);
 
   const begin = useCallback(() => {
     prewarm(); // fetch the 3D chunk and build the anatomy while the user answers
@@ -187,11 +193,12 @@ export default function App() {
 
       {!inLab && (
         <main className={`stage-plain ${leaving ? 'leaving' : ''}`} key={stage === 'ask' ? `ask-${askIndex}` : stage === 'labAsk' ? `lab-${labIndex}` : stage}>
-          {stage === 'start' && <Start value={answers.frequency} onPick={pickFrequency} onContinue={begin} />}
-          {stage === 'ask' && <Ask index={askIndex} value={answers[STEPS[askIndex].key]} onAnswer={answer} />}
+          {stage === 'start' && <Start value={answers.today} onPick={pickToday} onContinue={begin} />}
+          {stage === 'ask' && <Ask index={askIndex} offset={1} value={answers[STEPS[askIndex].key]} onAnswer={answer} />}
           {stage === 'time' && (
             <Timeline
-              answers={answers}
+              scenario={scenario.id}
+              profile={answerProfile}
               result={result}
               assumptions={assumptions}
               horizon={horizon}
@@ -200,7 +207,7 @@ export default function App() {
             />
           )}
           {stage === 'end' && <Finale onExplore={() => go('explore')} onReplay={replay} onOtherCategory={() => go('pick')} />}
-          {stage === 'pick' && <CategoryPick firstDomain={answers.domain} runs={labRuns} onPick={pickCategory} />}
+          {stage === 'pick' && <CategoryPick runs={labRuns} onPick={pickCategory} />}
           {stage === 'labAsk' && (
             <Ask
               index={labIndex}
@@ -214,7 +221,7 @@ export default function App() {
             <Analysis
               domain={labDomain}
               choices={labChoices}
-              first={{ domain: answers.domain, result: firstResult }}
+              first={{ label: SCENARIOS[scenario.id].title, result: firstResult }}
               onAnother={() => go('pick')}
               onChangeAnswers={() => go('labAsk', () => setLabIndex(0))}
               onReplay={replay}
@@ -241,6 +248,8 @@ export default function App() {
               {stage === 'sim' && (
                 <Result
                   answers={answers}
+                  scenario={scenario}
+                  profile={answerProfile}
                   inputs={inputs}
                   answerInputs={answerInputs}
                   setInputs={setInputs}
@@ -256,16 +265,18 @@ export default function App() {
                   inputs={inputs}
                   setInputs={setInputs}
                   result={result}
-                  pFollow={followThrough(answers)}
+                  profile={answerProfile}
                   assumptions={assumptions}
                   setAssumptions={setAssumptions}
                   onReplay={replay}
+                  onOtherCategory={() => go('pick')}
                 />
               )}
             </div>
             <footer className="disclaimer fine">
-              Illustrative educational model. Not a measurement of brain activity, willpower or future behavior, and not a
-              predictor of brain development, dementia or Alzheimer’s disease.
+              Illustrative educational model of self-reported behavior. Not a personality test or diagnosis, not a
+              measurement of brain activity or willpower, and not a predictor of brain development, dementia or Alzheimer’s
+              disease.
             </footer>
           </div>
         </main>

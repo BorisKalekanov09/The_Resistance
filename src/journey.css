@@ -28,7 +28,7 @@
 .start, .finale { position: relative; }
 .start-inner { display: flex; flex-direction: column; gap: 34px; position: relative; z-index: 1; max-width: 980px; }
 .start-inner > .label { color: var(--ink); letter-spacing: 0.26em; }
-.start-q { font-size: clamp(36px, 5.4vw, 76px); max-width: 15em; }
+.start-q { font-size: clamp(30px, 4.2vw, 58px); max-width: 17em; }
 .start-q em { font-style: normal; color: var(--rust); }
 .start-cta { display: flex; flex-direction: column; gap: 14px; align-items: flex-start; }
 .finale .display { max-width: 13em; }
@@ -122,7 +122,6 @@
   font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase;
   border: 1px solid var(--line-2); color: var(--ink-2);
 }
-.rcard-chip.pattern-frequent { border-color: var(--ink-2); color: var(--ink); }
 .rcard-sentence { font-size: 17px; line-height: 1.45; color: var(--ink); margin: 0; max-width: 28em; }
 .rcard .fine { max-width: 34em; }
 .scale { position: relative; height: 6px; border-radius: 6px; background: var(--bg-deep); }
@@ -257,24 +256,6 @@
   .topbar-actions { gap: 16px; }
 }
 
-/* aMCC change over time (illustrative) */
-.amcc-shift { transform-box: fill-box; transform-origin: 50% 50%; animation: amcc-shift 1.6s var(--ease) forwards 1.5s; }
-.amcc-shift .amcc-grey, .amcc-shift .amcc-glow { opacity: 0; animation: amcc-tint 1.6s var(--ease) forwards 1.5s; }
-.amcc-shift.weaker .amcc-fill { animation: fade 1s ease forwards 0.9s, amcc-fade 1.6s var(--ease) forwards 1.5s; }
-.amcc-shift.weaker .amcc-line path { animation: draw 1.3s var(--ease) forwards var(--d, 0s), amcc-line-weak 1.6s var(--ease) forwards 1.5s; }
-.amcc-shift.stronger .amcc-glow { fill: var(--rust); stroke: var(--rust); stroke-width: 5; stroke-opacity: 0.25; fill-opacity: 0.22; }
-.amcc-shift.stronger .amcc-line path { stroke-width: 2.4; }
-@keyframes amcc-shift { from { transform: scale(1); } to { transform: scale(var(--s, 1)); } }
-@keyframes amcc-tint { to { opacity: 1; } }
-@keyframes amcc-fade { to { opacity: calc(1 - 0.65 * var(--a, 0)); } }
-@keyframes amcc-line-weak { to { stroke: var(--graphite); opacity: 0.6; } }
-.sketch .hand.status-hand { animation-delay: 2.2s; }
-.sketch .hand.status-hand.weaker { fill: var(--graphite); }
-.sketch .hand.status-hand.stronger { fill: var(--rust); font-weight: 600; }
-@media (prefers-reduced-motion: reduce) {
-  .amcc-shift, .amcc-shift * { animation-duration: 0.01s !important; animation-delay: 0s !important; }
-}
-
 /* ---------- finale: second action ---------- */
 .btn-outline { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
 .btn-outline:hover { transform: translateY(-1px); background: var(--ink); color: var(--bg); }
@@ -348,3 +329,64 @@ svg .an-threshold-t { fill: var(--rust); }
 }
 .pick-options .big-option { min-height: 72px; padding: 18px 22px; }
 @media (max-width: 560px) { .pick-options { grid-template-columns: 1fr; } }
+
+/* ---------- reported pattern ---------- */
+.rcard-word.ink { color: var(--ink); font-size: 30px; }
+.profile-bars { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.profile-bars li { display: grid; grid-template-columns: 190px 1fr 40px; align-items: center; gap: 12px; }
+.profile-bars li .mono { text-align: right; }
+.rcard .fold { margin-top: 2px; }
+
+.timeline-head .label { display: block; margin-bottom: 10px; color: var(--rust); }
+
+/* ---------- pattern check card ---------- */
+.pattern-check {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  border: 1px solid var(--line-2);
+  border-left: 3px solid var(--rust-soft);
+  background: var(--bg);
+  animation: rise 0.7s var(--ease) both;
+}
+.pattern-check-title { margin: 0; display: flex; align-items: center; gap: 10px; font-size: 19px; font-weight: 600; color: var(--ink); letter-spacing: -0.01em; }
+.pattern-check-icon {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  font-size: 14px;
+  background: var(--bg-deep);
+  color: var(--ink-2);
+}
+.pattern-check.trend-up .pattern-check-icon,
+.pattern-check.trend-down .pattern-check-icon { background: var(--rust-wash); color: var(--rust); }
+
+/* three kinds of outcomes: same hue family, different weight — none is "bad" */
+.dl { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+.dl.direct { background: var(--rust); opacity: 0.78; }
+.dl.returned { border: 1.5px solid var(--rust); background: radial-gradient(circle, var(--rust) 0 2px, transparent 2.5px); }
+.dl.aside { border: 1px solid var(--graphite); opacity: 0.55; }
+.day-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; color: var(--ink-2); margin-top: 6px; }
+.sketch .day-ring { fill: none; stroke: var(--rust); stroke-width: 1; }
+.sketch .day-core { fill: var(--rust); fill-opacity: 0.8; }
+
+/* ---------- 10-minute session sketch ---------- */
+.sketch.session { margin-bottom: 4px; }
+.sketch .tempt-dot { fill: var(--bg); stroke: var(--graphite); stroke-width: 1.2; }
+.sketch .tempt.resisted .tempt-dot { stroke: var(--rust); }
+.sketch .tempt.missed { opacity: 0.45; }
+.sketch .hand.rust-hand { fill: var(--rust); }
+.nb-mini { max-width: 200px; opacity: 0.9; }
+
+@media (max-width: 640px) {
+  .profile-bars li { grid-template-columns: 1fr 40px; }
+  .profile-bars li .calc-label { grid-column: 1 / -1; }
+}
+
+.explore-session { display: flex; flex-direction: column; gap: 8px; padding: 18px 16px 14px; border-radius: 14px; background: var(--paper); border: 1px solid var(--line); }
+.explore-session .sketch .draw { animation-duration: 0.6s; }

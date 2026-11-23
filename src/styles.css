@@ -322,25 +322,6 @@ button:disabled { cursor: default; }
 }
 .annot-text b { font-size: 12px; letter-spacing: 0.16em; color: var(--rust); font-weight: 600; }
 .annot-text i { font-style: normal; font-size: 11px; color: var(--ink-2); }
-.annot-status {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin-top: 6px;
-  padding: 6px 9px;
-  border-radius: 8px;
-  background: rgba(246, 244, 239, 0.88);
-  border: 1px solid var(--line-2);
-  white-space: normal;
-  width: 168px;
-  animation: rise 0.7s var(--ease) both;
-}
-.annot-status em { font-style: normal; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; color: var(--ink); }
-.annot-status small { font-size: 10.5px; line-height: 1.35; color: var(--ink-2); }
-.annot-status.trend-weaker { border-color: #b9aea5; }
-.annot-status.trend-weaker em { color: #7d726a; }
-.annot-status.trend-stronger { border-color: var(--rust-soft); background: rgba(250, 238, 230, 0.92); }
-.annot-status.trend-stronger em { color: var(--rust); }
 
 /* choice dots */
 .choice-strip { display: flex; flex-direction: column; gap: 14px; padding: 20px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
@@ -607,30 +588,3 @@ svg .eq-t { fill: var(--rust-soft); }
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-delay: 0ms !important; transition-duration: 0.01ms !important; }
 }
 
-/* brain check card on the trajectory screen */
-.brain-check {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 16px 18px;
-  border-radius: 14px;
-  border: 1px solid var(--line-2);
-  background: var(--bg);
-  animation: rise 0.7s var(--ease) both;
-}
-.brain-check-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
-.brain-check-title { margin: 0; display: flex; align-items: center; gap: 10px; font-size: 17px; font-weight: 600; color: var(--ink); }
-.brain-check-icon {
-  display: inline-grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  font-size: 14px;
-  background: var(--bg-deep);
-  color: var(--muted);
-}
-.brain-check.trend-weaker { background: #f1eeea; border-color: #cfc6bd; }
-.brain-check.trend-weaker .brain-check-icon { background: #e2dcd5; color: #7d726a; }
-.brain-check.trend-stronger { background: var(--rust-wash); border-color: var(--rust-soft); }
-.brain-check.trend-stronger .brain-check-icon { background: var(--rust); color: #fff; }
