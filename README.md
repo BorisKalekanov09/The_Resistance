@@ -11,9 +11,11 @@ npm run build    # static site in dist/
 
 ## Journey
 
-Intro → 3 questions (couch, workout, phone) → reveal (3D head, aMCC highlighted) → simulator → long-term trajectory → science.
+Personal question (“How many times today did you tell yourself: I’ll do it later?”) → three short questions, one per screen → the 3D head with the aMCC highlighted while the model runs → one simulated action tendency, explained in plain language → “What if this pattern repeated over time?” as a pencil-sketch research notebook (10 minutes / 10 months / 10 years) → optional “Explore more” with the interactive brain, two live experiments and the science notes.
 
-To jump straight to a screen while developing, add `?demo=q|reveal|sim|traj|science` to the URL.
+Answers map to model parameters in `src/data/journey.ts` (effort, reward, weight of effort); the mapping is shown to users under “What shaped this number?”.
+
+To jump straight to a screen while developing, add `?demo=ask|sim|time|end|explore` to the URL (sample answers are filled in). On the timeline, `&h=10mo` or `&h=10y` opens a specific horizon.
 
 ## Models (illustrative, not validated)
 

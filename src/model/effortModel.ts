@@ -12,13 +12,13 @@
  *   R = reward / 10                 → 0 … 1
  *   E = effort / 10                 → 0 … 1
  *   C = sensitivity / 5             → 0 … 2   (5 = "neutral": effort and reward weigh equally)
- *   k = 6                           → slope of the sigmoid
+ *   k = 5                           → slope of the sigmoid
  *
  * With these choices, equal reward and effort at a neutral sensitivity give
  * V = 0 and therefore P = 50 %, which keeps the sliders intuitive.
  */
 
-export const SIGMOID_K = 6;
+export const SIGMOID_K = 5;
 
 export interface ModelInputs {
   /** Perceived effort, slider 0–10 */
@@ -73,11 +73,11 @@ export function band(tendency: number): Band {
 export function interpret(r: ModelResult): string {
   switch (band(r.tendency)) {
     case 'high':
-      return 'In this scenario, the modeled reward outweighs the effort cost.';
+      return 'In this scenario, the model suggests that the expected reward outweighs the perceived effort.';
     case 'low':
-      return 'In this scenario, the modeled effort cost outweighs the expected reward.';
+      return 'In this scenario, the model suggests that the perceived effort outweighs the expected reward.';
     default:
-      return 'The model represents a balance between expected reward and effort cost.';
+      return 'In this scenario, the model suggests that expected reward and perceived effort are almost in balance — it could go either way.';
   }
 }
 

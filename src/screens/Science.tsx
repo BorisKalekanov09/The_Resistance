@@ -59,68 +59,46 @@ const ITEMS: Item[] = [
   },
 ];
 
-export default function Science({ onRestart, onBack }: { onRestart: () => void; onBack: () => void }) {
-  const [open, setOpen] = useState<number | null>(0);
+/** The evidence notes: what research says, with its limits. */
+export default function ScienceNotes() {
+  const [open, setOpen] = useState<number | null>(null);
 
   return (
-    <div className="panel-inner science">
-      <header className="panel-head reveal-1">
-        <span className="label">What does science know?</span>
-        <h2 className="h2">Three questions, briefly.</h2>
-      </header>
-
-      <div className="accordion reveal-2">
-        {ITEMS.map((it, i) => {
-          const isOpen = open === i;
-          return (
-            <div key={it.n} className={`acc ${isOpen ? 'open' : ''}`}>
-              <button className="acc-head" onClick={() => setOpen(isOpen ? null : i)} aria-expanded={isOpen}>
-                <span className="mono acc-n">{it.n}</span>
-                <span className="acc-title">{it.title}</span>
-                <span className="acc-icon" aria-hidden />
-              </button>
-              <div className="acc-body">
-                <div className="acc-inner">
-                  <p className="acc-q">{it.question}</p>
-                  {it.paragraphs.map((p, j) => (
-                    <p key={j} className="body">
-                      {p}
-                    </p>
-                  ))}
-                  <div className="acc-foot">
-                    <div className="acc-tags">
-                      {it.tags.map((t) => (
-                        <Tag key={t} kind={t} />
-                      ))}
-                    </div>
-                    <ul className="refs">
-                      {it.refs.map((r) => (
-                        <li key={r}>{r}</li>
-                      ))}
-                    </ul>
+    <div className="accordion">
+      {ITEMS.map((it, i) => {
+        const isOpen = open === i;
+        return (
+          <div key={it.n} className={`acc ${isOpen ? 'open' : ''}`}>
+            <button className="acc-head" onClick={() => setOpen(isOpen ? null : i)} aria-expanded={isOpen}>
+              <span className="mono acc-n">{it.n}</span>
+              <span className="acc-title">{it.title}</span>
+              <span className="acc-icon" aria-hidden />
+            </button>
+            <div className="acc-body">
+              <div className="acc-inner">
+                <p className="acc-q">{it.question}</p>
+                {it.paragraphs.map((p, j) => (
+                  <p key={j} className="body">
+                    {p}
+                  </p>
+                ))}
+                <div className="acc-foot">
+                  <div className="acc-tags">
+                    {it.tags.map((t) => (
+                      <Tag key={t} kind={t} />
+                    ))}
                   </div>
+                  <ul className="refs">
+                    {it.refs.map((r) => (
+                      <li key={r}>{r}</li>
+                    ))}
+                  </ul>
                 </div>
               </div>
             </div>
-          );
-        })}
-      </div>
-
-      <div className="closing reveal-3">
-        <p className="h3">You just interacted with a model of how a brain might weigh effort against reward.</p>
-        <p className="body muted">
-          The model is a simplification. The question it points at — what makes the difficult thing feel worth doing — is
-          real, and still being studied.
-        </p>
-        <div className="row-actions">
-          <button className="btn btn-primary" onClick={onRestart}>
-            Restart the experience ↺
-          </button>
-          <button className="link" onClick={onBack}>
-            ← Back to the trajectory
-          </button>
-        </div>
-      </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

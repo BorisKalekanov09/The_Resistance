@@ -133,3 +133,28 @@ export function equilibrium(p: TrajectoryParams, pChoicesOverride?: number) {
   }
   return I;
 }
+
+/**
+ * Day-by-day view of the same dynamics: for each day, the modeled probability
+ * of starting anyway (averaged over that day's `perDay` decisions) and the
+ * index at the end of the day. Used by the 10-month notebook page.
+ */
+export function dailyPattern(p: TrajectoryParams, days: number) {
+  const alpha = alphaFrom(p.adaptation);
+  const beta = betaFrom(p.decay);
+  const perDay = Math.max(1, Math.round(p.perDay));
+  const out: { p: number; index: number }[] = [];
+  let I = I0;
+  for (let d = 0; d < days; d++) {
+    let sum = 0;
+    for (let k = 0; k < perDay; k++) {
+      const c = p.C0 * (1 - GAMMA * (I - 0.5));
+      const pm = sigmoid(p.R - p.E * c, SIGMOID_K);
+      const prob = BLEND_W * p.pChoices + (1 - BLEND_W) * pm;
+      sum += prob;
+      I = I + alpha * prob * (1 - I) - beta * (1 - prob) * I;
+    }
+    out.push({ p: sum / perDay, index: I });
+  }
+  return out;
+}
