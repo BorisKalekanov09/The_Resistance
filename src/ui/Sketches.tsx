@@ -2,7 +2,8 @@
  * Hand-drawn, pencil-style SVG illustrations for the "research notebook" timeline.
  * The wobble comes from an SVG turbulence filter; strokes "draw in" via pathLength.
  */
-import type { ReactNode, SVGProps } from 'react';
+import type { CSSProperties, ReactNode, SVGProps } from 'react';
+import type { BrainShift } from '../model/brainShift';
 
 /** Shared filters and hatch patterns. Render once per page. */
 export function PencilDefs() {
@@ -71,7 +72,12 @@ const STEM = ['M196,170 C200,190 202,206 206,228', 'M218,170 C218,190 222,206 22
 
 export type SketchMode = 'moment' | 'months' | 'years';
 
-export function BrainSketch({ mode }: { mode: SketchMode }) {
+export function BrainSketch({ mode, shift = null }: { mode: SketchMode; shift?: BrainShift | null }) {
+  const trend = shift && (shift.trend === 'weaker' || shift.trend === 'stronger') ? shift.trend : null;
+  const amt = Math.abs(shift?.amount ?? 0);
+  // weakened: shrinks up to ~35%; strengthened: swells up to ~25%
+  const scale = trend === 'weaker' ? 1 - 0.35 * amt : trend === 'stronger' ? 1 + 0.25 * amt : 1;
+  const shiftStyle = { ['--s' as string]: scale, ['--a' as string]: amt } as CSSProperties;
   return (
     <svg viewBox="0 0 330 268" className="sketch brain-sketch" role="img" aria-label="Pencil sketch of the brain seen from the middle, with the anterior midcingulate cortex shaded">
       <g filter="url(#pencil)">
@@ -89,14 +95,24 @@ export function BrainSketch({ mode }: { mode: SketchMode }) {
         ))}
         <Stroke d={CALLOSUM} className="lead" delay={0.4} />
         <Stroke d={CINGULATE} className="lead thin" delay={0.45} />
-        <path d={AMCC} fill="url(#hatch-rust)" className="fade-in late" />
-        <Stroke d={AMCC} className="rust" delay={0.7} />
+        <g className={`amcc-shift ${trend ?? ''}`} style={shiftStyle}>
+          <path d={AMCC} fill="url(#hatch-rust)" className="fade-in late amcc-fill" />
+          {trend === 'weaker' && <path d={AMCC} fill="url(#hatch-lead)" className="amcc-grey" />}
+          {trend === 'stronger' && <path d={AMCC} className="amcc-glow" />}
+          <Stroke d={AMCC} className="rust amcc-line" delay={0.7} />
+        </g>
       </g>
 
       {/* annotation: the aMCC */}
       <g className="annot-sketch" filter="url(#pencil-soft)">
         <Stroke d="M160,86 C164,60 176,30 196,14" className="rust thin" delay={0.9} />
         <Hand x={200} y={16} className="rust-ink">aMCC</Hand>
+        {trend && (
+          <Hand x={200} y={36} className={`small-hand status-hand ${trend}`}>
+            {trend === 'weaker' ? '↓ ' : '↑ '}
+            {shift!.tag.toLowerCase()}
+          </Hand>
+        )}
       </g>
 
       {mode === 'moment' && (
@@ -112,8 +128,8 @@ export function BrainSketch({ mode }: { mode: SketchMode }) {
       )}
       {mode === 'years' && (
         <g filter="url(#pencil-soft)">
-          <Hand x={56} y={246}>same brain in every sketch —</Hand>
-          <Hand x={56} y={264}>the model follows a habit, not tissue</Hand>
+          <Hand x={56} y={246}>{trend === 'weaker' ? 'used less and less —' : trend === 'stronger' ? 'used again and again —' : 'a habit held steady —'}</Hand>
+          <Hand x={56} y={264}>an illustration, not a measurement</Hand>
         </g>
       )}
     </svg>

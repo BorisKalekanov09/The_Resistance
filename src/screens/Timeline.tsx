@@ -4,6 +4,7 @@ import { domainNoun, followThrough } from '../data/journey';
 import type { ModelResult } from '../model/effortModel';
 import type { Horizon, TrajectoryParams } from '../model/trajectory';
 import { dailyPattern, simulateTrajectory } from '../model/trajectory';
+import { brainShift } from '../model/brainShift';
 import { BalanceSketch, BrainSketch, MonthsSketch, PencilDefs, YearsSketch } from '../ui/Sketches';
 
 export interface Assumptions {
@@ -47,6 +48,8 @@ export default function Timeline({ answers, result, assumptions, horizon, setHor
     }),
     [params],
   );
+  const months = useMemo(() => simulateTrajectory(params, '10mo'), [params]);
+  const shift = brainShift(horizon === '10y' ? years.main.final : months.final, horizon);
   const started = useMemo(() => Math.round(days.reduce((s, d) => s + d.p, 0)), [days]);
   const firstMonth = Math.round(days.slice(0, 30).reduce((s, d) => s + d.p, 0));
   const lastMonth = Math.round(days.slice(-30).reduce((s, d) => s + d.p, 0));
@@ -105,7 +108,7 @@ export default function Timeline({ answers, result, assumptions, horizon, setHor
         </p>
         <p className="assume-head">What this is not</p>
         <ul>
-          <li>It does not calculate aMCC growth, brain volume or any change in brain tissue.</li>
+          <li>The change in the sketch is an illustration of the pattern — it does not measure brain volume or tissue.</li>
           <li>It does not estimate dementia or Alzheimer’s risk, or anything about your future health.</li>
           <li>It does not predict what you will do. Real lives change; this model does not.</li>
         </ul>
@@ -135,12 +138,25 @@ export default function Timeline({ answers, result, assumptions, horizon, setHor
       <article className="notebook reveal-3" key={horizon} role="tabpanel" aria-label={tab.label}>
         <div className="nb-grid">
           <figure className="nb-figure">
-            <BrainSketch mode={horizon === '10m' ? 'moment' : horizon === '10mo' ? 'months' : 'years'} />
+            <BrainSketch mode={horizon === '10m' ? 'moment' : horizon === '10mo' ? 'months' : 'years'} shift={shift} />
           </figure>
           <div className="nb-text">
             <p className="nb-title">{tab.title}</p>
             <figure className="nb-viz">{sketch}</figure>
             <p className="nb-represent">{represent}</p>
+            <div className={`brain-check trend-${shift.trend}`} role="status">
+              <span className="label">Brain check · {tab.label}</span>
+              <p className="brain-check-title">
+                <span className="brain-check-icon" aria-hidden>
+                  {shift.trend === 'weaker' ? '↓' : shift.trend === 'stronger' ? '↑' : '–'}
+                </span>
+                {shift.title}
+              </p>
+              <p className="small">{shift.body}</p>
+              {(shift.trend === 'weaker' || shift.trend === 'stronger') && (
+                <p className="fine">Watch the aMCC in the sketch. Illustration of a hypothesis, not a measurement.</p>
+              )}
+            </div>
             <details className="fold">
               <summary>How was this calculated?</summary>
               <div className="fold-body">{detail}</div>
