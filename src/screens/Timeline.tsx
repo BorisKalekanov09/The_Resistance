@@ -3,7 +3,7 @@ import type { Profile, ScenarioId } from '../data/journey';
 import { SCENARIOS, TASK_NOUN } from '../data/journey';
 import type { ModelResult } from '../model/effortModel';
 import type { Horizon, TrajectoryParams } from '../model/trajectory';
-import { ALWAYS, HORIZONS, I0, NEVER, TEMPTATIONS, dailyPattern, sessionPlan, simulateTrajectory, withProfile } from '../model/trajectory';
+import { ALWAYS, HORIZONS, NEVER, TEMPTATIONS, dailyPattern, sessionPlan, simulateTrajectory, withProfile } from '../model/trajectory';
 import { BalanceSketch, BrainSketch, DayLegend, MonthsSketch, PencilDefs, SessionSketch, YearsSketch } from '../ui/Sketches';
 
 export interface Assumptions {
@@ -73,7 +73,7 @@ interface Outlook {
  * terms. Direction and size come from the same dynamics as the curve: as the index
  * rises, effort counts less (γ), so starting becomes more likely; as it falls, the reverse.
  */
-function outlook(horizon: Horizon, final: number): Outlook {
+function outlook(horizon: Horizon, final: number, start: number): Outlook {
   if (horizon === '10m') {
     return {
       trend: 'none',
@@ -81,7 +81,7 @@ function outlook(horizon: Horizon, final: number): Outlook {
       body: 'A single session barely registers. The model only changes through repetition — over months, not minutes.',
     };
   }
-  const d = final - I0;
+  const d = final - start;
   const long = horizon === '10y';
   const big = Math.abs(d) >= 0.08;
   if (Math.abs(d) < 0.02) {
@@ -149,7 +149,7 @@ export default function Timeline({ scenario: own, profile, result, assumptions, 
 
   const tabIndex = TABS.findIndex((t) => t.id === horizon);
   const tab = TABS[tabIndex];
-  const look = outlook(horizon, horizon === '10y' ? years.main.final : months.final);
+  const look = outlook(horizon, horizon === '10y' ? years.main.final : months.final, horizon === '10y' ? years.main.start : months.start);
   const resisted = session.events.filter((e) => e.kind === 'resisted').length;
 
   let sketch = null;

@@ -57,13 +57,19 @@ export default function Explore({ inputs, setInputs, result, profile, assumption
         <h2 className="h2">
           Meet the <span className="accent">anterior midcingulate cortex</span>.
         </h2>
-        <p className="body">
-          Deep in the middle of the brain, above the band that joins the two hemispheres, sits the aMCC. It is a busy hub,
-          often active when a task demands effort, when something conflicts with a goal, or when we need to keep going.
+        <p className="explore-lede">
+          Deep in the middle of the brain, above the band that joins the two hemispheres, sits the aMCC. It is a busy
+          hub, lighting up when <strong>a task demands effort</strong>, when <strong>something conflicts with a goal</strong>,
+          or when <strong>we need to keep going</strong>.
         </p>
-        <p className="body muted">
-          It is not a “willpower centre”. Persistence comes from many regions working together. Drag the head to look
-          around; the highlighted strip is the aMCC.
+        <aside className="explore-caveat" role="note">
+          <span className="explore-caveat-label">Important</span>
+          <p>
+            It is <em>not</em> a “willpower centre”. Persistence comes from many regions working together.
+          </p>
+        </aside>
+        <p className="explore-hint">
+          <span aria-hidden>↻</span> Drag the head to look around — the highlighted strip is the aMCC.
         </p>
       </header>
 

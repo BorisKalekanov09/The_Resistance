@@ -13,13 +13,15 @@
  *                    focus (continue through a distraction), swing (day-to-day variation)
  *   perDay, adaptation, decay   assumptions about repetition
  *
- * State: a dimensionless "follow-through index" I ∈ [0, 1], starting at 0.5.
+ * State: a dimensionless "follow-through index" I ∈ [0, 1], starting at the
+ * current effort-reward tendency I₀ = σ(k (R − E × C0)) — the % in Experiment 01.
  *
  * At every modeled challenging moment n (on day d):
- *   c   = C0 × (1 − γ (I − 0.5))                 effort counts slightly less as I rises
+ *   c   = C0 × (1 − γ (I − I₀))                  effort counts less as I rises above the start
  *   pM  = σ(k (R − E × c))                       effort-reward model
  *   s   = clamp(w·start + (1 − w)·pM + swing·energy(d))   taken on right away
- *   q   = s·(focus + (1 − focus)·ret) + (1 − s)·ret     completed (directly or after returning)
+ *   r   = w·ret + (1 − w)·pM                     comes back to it later (also an effort decision)
+ *   q   = s·focus + (1 − s·focus)·r              completed (directly or after returning)
  *   I  ← I + α q (1 − I) − β (1 − q) I
  *
  * Each moment is assumed to contain one tempting distraction. The update uses
@@ -46,7 +48,11 @@ export interface TrajectoryParams {
 
 export const BLEND_W = 0.5;
 export const GAMMA = 0.5;
+/** Neutral starting index (used where no parameters are available). */
 export const I0 = 0.5;
+
+/** Starting index: the current effort-reward tendency (Experiment 01). */
+export const startIndex = (p: Pick<TrajectoryParams, 'R' | 'E' | 'C0'>) => sigmoid(p.R - p.E * p.C0, SIGMOID_K);
 
 export const alphaFrom = (slider: number) => slider * 0.0004;
 export const betaFrom = (slider: number) => slider * 0.0004;
@@ -86,11 +92,12 @@ export interface Moment {
 /** One modeled challenging moment, given the current index and day. */
 export function moment(p: TrajectoryParams, I: number, day: number): Moment {
   const { start, ret, focus, swing } = p.profile;
-  const c = p.C0 * (1 - GAMMA * (I - 0.5));
+  const c = p.C0 * (1 - GAMMA * (I - startIndex(p)));
   const pm = sigmoid(p.R - p.E * c, SIGMOID_K);
   const s = clamp01(BLEND_W * start + (1 - BLEND_W) * pm + swing * energy(day));
+  const r = clamp01(BLEND_W * ret + (1 - BLEND_W) * pm);
   const direct = s * focus;
-  const returned = s * (1 - focus) * ret + (1 - s) * ret;
+  const returned = (1 - direct) * r;
   return { s, direct, returned, q: direct + returned };
 }
 
@@ -107,6 +114,8 @@ export interface Series {
   /** x in horizon units, y = index 0–1 */
   points: { x: number; y: number }[];
   final: number;
+  /** starting index (the current tendency) */
+  start: number;
   totals: Totals;
 }
 
@@ -118,9 +127,10 @@ export function simulateTrajectory(p: TrajectoryParams, horizon: Exclude<Horizon
   const alpha = alphaFrom(p.adaptation);
   const beta = betaFrom(p.decay);
   const stride = Math.max(1, Math.floor(spec.days / MAX_POINTS));
-  const points: { x: number; y: number }[] = [{ x: 0, y: I0 }];
+  const start = startIndex(p);
+  const points: { x: number; y: number }[] = [{ x: 0, y: start }];
   const totals: Totals = { moments: 0, direct: 0, returned: 0, setAside: 0, resisted: 0 };
-  let I = I0;
+  let I = start;
   for (let d = 0; d < spec.days; d++) {
     for (let k = 0; k < perDay; k++) {
       const m = moment(p, I, d);
@@ -133,7 +143,7 @@ export function simulateTrajectory(p: TrajectoryParams, horizon: Exclude<Horizon
     }
     if ((d + 1) % stride === 0 || d === spec.days - 1) points.push({ x: ((d + 1) / spec.days) * spec.span, y: I });
   }
-  return { points, final: I, totals };
+  return { points, final: I, start, totals };
 }
 
 /** Same model with the behavioral profile replaced, for the reference lines. */
@@ -146,7 +156,7 @@ export function equilibrium(p: TrajectoryParams) {
   const alpha = alphaFrom(p.adaptation);
   const beta = betaFrom(p.decay);
   const flat = withProfile(p, { ...p.profile, swing: 0 });
-  let I = I0;
+  let I = startIndex(p);
   for (let i = 0; i < 200; i++) {
     const { q } = moment(flat, I, 0);
     const next = (alpha * q) / (alpha * q + beta * (1 - q));
@@ -165,7 +175,7 @@ export function dailyPattern(p: TrajectoryParams, days: number) {
   const beta = betaFrom(p.decay);
   const perDay = Math.max(1, Math.round(p.perDay));
   const out: { s: number; direct: number; returned: number; index: number }[] = [];
-  let I = I0;
+  let I = startIndex(p);
   for (let d = 0; d < days; d++) {
     let s = 0;
     let direct = 0;
@@ -212,7 +222,7 @@ const PAUSE = 1.2;
  *                   interrupts the task — it resumes after ~1 min if ret ≥ 0.5, otherwise it stops
  */
 export function sessionPlan(p: TrajectoryParams): Session {
-  const { s } = moment(withProfile(p, { ...p.profile, swing: 0 }), I0, 0);
+  const { s } = moment(withProfile(p, { ...p.profile, swing: 0 }), startIndex(p), 0);
   const { ret, focus } = p.profile;
   const comesBack = ret >= 0.5;
   const startAt = s >= 0.6 ? 0 : s >= 0.4 ? 1.5 : comesBack ? 4 : null;
