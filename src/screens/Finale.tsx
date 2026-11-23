@@ -1,10 +1,11 @@
 interface Props {
   onExplore: () => void;
   onReplay: () => void;
+  onOtherCategory: () => void;
 }
 
 /** Screen 6 — an invitation to go deeper; the main experience is complete without it. */
-export default function Finale({ onExplore, onReplay }: Props) {
+export default function Finale({ onExplore, onReplay, onOtherCategory }: Props) {
   return (
     <section className="screen finale">
       <div className="intro-mark" aria-hidden>
@@ -23,6 +24,9 @@ export default function Finale({ onExplore, onReplay }: Props) {
         <div className="start-cta reveal-3">
           <button className="btn btn-primary btn-lg" onClick={onExplore}>
             Explore more
+          </button>
+          <button className="btn btn-outline btn-lg" onClick={onOtherCategory}>
+            Test another category →
           </button>
           <button className="link" onClick={onReplay}>
             Replay from the start ↺

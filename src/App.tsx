@@ -1,10 +1,17 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { LabCategory } from './data/categoryLab';
+import { labQuestions } from './data/categoryLab';
 import type { Answers, Frequency } from './data/journey';
 import { EMPTY_ANSWERS, STEPS, followThrough, inputsFromAnswers } from './data/journey';
 import type { ModelInputs } from './model/effortModel';
 import { runModel } from './model/effortModel';
+import type { Choices } from './model/categoryModel';
+import { FACTOR_KEYS, evaluate, factorsFrom } from './model/categoryModel';
 import type { Horizon } from './model/trajectory';
+import Analysis from './screens/Analysis';
 import Ask from './screens/Ask';
+import CategoryPick from './screens/CategoryPick';
+import type { LabRun } from './screens/CategoryPick';
 import Explore from './screens/Explore';
 import Finale from './screens/Finale';
 import Result from './screens/Result';
@@ -16,18 +23,23 @@ const loadScene = () => import('./three/BrainScene');
 const BrainScene = lazy(loadScene);
 const prewarm = () => void loadScene().then(() => import('./three/anatomy')).then((m) => m.prewarmAnatomy());
 
-type Stage = 'start' | 'ask' | 'sim' | 'time' | 'end' | 'explore';
+type Stage = 'start' | 'ask' | 'sim' | 'time' | 'end' | 'explore' | 'pick' | 'labAsk' | 'analysis';
 const LAB_STAGES: Stage[] = ['sim', 'explore'];
 
 const DEFAULT_ASSUMPTIONS: Assumptions = { perDay: 3, adaptation: 5, decay: 5 };
 const TRANSITION_MS = 360;
 const DEMO_ANSWERS: Answers = { frequency: 'few', domain: 'study', reason: 'unmotivated', feeling: 'guilty' };
+const DEMO_CHOICES: Choices = { duration: 1, intensity: 2, value: 2, delay: 2, certainty: 1, energy: 2 };
+const DEMO_STAGES: Stage[] = ['ask', 'sim', 'time', 'end', 'explore', 'pick', 'analysis'];
 
-/** `?demo=sim|time|end|explore` jumps straight to a screen with sample answers. */
+/** `?demo=sim|time|end|explore|pick|analysis` jumps straight to a screen with sample answers. */
 function readDemo(): Stage | null {
   const d = new URLSearchParams(window.location.search).get('demo');
-  return d && ['ask', 'sim', 'time', 'end', 'explore'].includes(d) ? (d as Stage) : null;
+  return d && DEMO_STAGES.includes(d as Stage) ? (d as Stage) : null;
 }
+
+const FACTOR_COMPLETE = (c: Partial<Choices>): c is Choices =>
+  FACTOR_KEYS.every((k) => typeof c[k] === 'number');
 
 export default function App() {
   const demo = useMemo(readDemo, []);
@@ -43,9 +55,16 @@ export default function App() {
   });
   const [assumptions, setAssumptions] = useState<Assumptions>(DEFAULT_ASSUMPTIONS);
   const [highlight, setHighlight] = useState(false);
+  // technical category simulation
+  const [labDomain, setLabDomain] = useState<LabCategory>('work');
+  const [labIndex, setLabIndex] = useState(0);
+  const [labChoices, setLabChoices] = useState<Partial<Choices>>(demo === 'analysis' ? DEMO_CHOICES : {});
+  const [labRuns, setLabRuns] = useState<LabRun[]>([]);
   const panelRef = useRef<HTMLDivElement>(null);
 
   const inLab = LAB_STAGES.includes(stage);
+  const labSteps = useMemo(() => labQuestions(labDomain), [labDomain]);
+  const firstResult = useMemo(() => runModel(inputsFromAnswers(answers)), [answers]);
   const answerInputs = useMemo(() => inputsFromAnswers(answers), [answers]);
   const result = useMemo(() => runModel(inputs), [inputs]);
 
@@ -98,6 +117,32 @@ export default function App() {
     });
   };
 
+  const pickCategory = useCallback(
+    (d: LabCategory) =>
+      go('labAsk', () => {
+        setLabDomain(d);
+        setLabIndex(0);
+        setLabChoices({});
+      }),
+    [go],
+  );
+
+  const labAnswer = (id: string) => {
+    const key = labSteps[labIndex].key;
+    const next = { ...labChoices, [key]: Number(id) };
+    if (labIndex < labSteps.length - 1) {
+      go('labAsk', () => {
+        setLabChoices(next);
+        setLabIndex(labIndex + 1);
+      });
+      return;
+    }
+    go('analysis', () => {
+      setLabChoices(next);
+      setLabRuns((runs) => [...runs, { domain: labDomain, P: evaluate(factorsFrom(next as Choices)).P }]);
+    });
+  };
+
   const replay = () =>
     go('start', () => {
       setAnswers(EMPTY_ANSWERS);
@@ -106,6 +151,8 @@ export default function App() {
       setHorizon('10m');
       setAssumptions(DEFAULT_ASSUMPTIONS);
       setHighlight(false);
+      setLabRuns([]);
+      setLabChoices({});
       if (demo) window.history.replaceState(null, '', window.location.pathname);
     });
 
@@ -115,6 +162,9 @@ export default function App() {
     if (stage === 'time') return go('sim', () => setAnimateResult(false));
     if (stage === 'end') return go('time');
     if (stage === 'explore') return go('end');
+    if (stage === 'pick') return go('end');
+    if (stage === 'labAsk') return labIndex > 0 ? go('labAsk', () => setLabIndex(labIndex - 1)) : go('pick');
+    if (stage === 'analysis') return go('labAsk', () => setLabIndex(labSteps.length - 1));
   };
 
   return (
@@ -136,7 +186,7 @@ export default function App() {
       </header>
 
       {!inLab && (
-        <main className={`stage-plain ${leaving ? 'leaving' : ''}`} key={stage === 'ask' ? `ask-${askIndex}` : stage}>
+        <main className={`stage-plain ${leaving ? 'leaving' : ''}`} key={stage === 'ask' ? `ask-${askIndex}` : stage === 'labAsk' ? `lab-${labIndex}` : stage}>
           {stage === 'start' && <Start value={answers.frequency} onPick={pickFrequency} onContinue={begin} />}
           {stage === 'ask' && <Ask index={askIndex} value={answers[STEPS[askIndex].key]} onAnswer={answer} />}
           {stage === 'time' && (
@@ -149,7 +199,27 @@ export default function App() {
               onNext={() => go('end')}
             />
           )}
-          {stage === 'end' && <Finale onExplore={() => go('explore')} onReplay={replay} />}
+          {stage === 'end' && <Finale onExplore={() => go('explore')} onReplay={replay} onOtherCategory={() => go('pick')} />}
+          {stage === 'pick' && <CategoryPick firstDomain={answers.domain} runs={labRuns} onPick={pickCategory} />}
+          {stage === 'labAsk' && (
+            <Ask
+              index={labIndex}
+              steps={labSteps}
+              kicker="Six questions. Each answer becomes a number in the model."
+              value={labSteps[labIndex].key in labChoices ? String(labChoices[labSteps[labIndex].key]) : null}
+              onAnswer={labAnswer}
+            />
+          )}
+          {stage === 'analysis' && FACTOR_COMPLETE(labChoices) && (
+            <Analysis
+              domain={labDomain}
+              choices={labChoices}
+              first={{ domain: answers.domain, result: firstResult }}
+              onAnother={() => go('pick')}
+              onChangeAnswers={() => go('labAsk', () => setLabIndex(0))}
+              onReplay={replay}
+            />
+          )}
         </main>
       )}
 

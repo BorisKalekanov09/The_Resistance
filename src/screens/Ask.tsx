@@ -6,11 +6,21 @@ interface Props {
   /** Previously given answer for this step, if any */
   value: string | null;
   onAnswer: (id: string) => void;
+  /** Questions to step through (defaults to the main questionnaire) */
+  steps?: readonly { question: string; options: readonly { id: string; label: string }[] }[];
+  /** Line shown above the first question */
+  kicker?: string;
 }
 
 /** Screen 2 — one short personal question per screen. */
-export default function Ask({ index, value, onAnswer }: Props) {
-  const step = STEPS[index];
+export default function Ask({
+  index,
+  value,
+  onAnswer,
+  steps = STEPS,
+  kicker = 'Let’s understand a little more about your everyday decisions.',
+}: Props) {
+  const step = steps[index];
   const [picked, setPicked] = useState<string | null>(null);
   const timer = useRef<number>();
 
@@ -38,17 +48,17 @@ export default function Ask({ index, value, onAnswer }: Props) {
       <div className="q-meta reveal-1">
         <span className="mono small">
           {index + 1}
-          <span className="muted">/{STEPS.length}</span>
+          <span className="muted">/{steps.length}</span>
         </span>
         <div className="q-progress" aria-hidden>
-          {STEPS.map((_, i) => (
+          {steps.map((_, i) => (
             <span key={i} className={i <= index ? 'on' : ''} />
           ))}
         </div>
       </div>
 
       <div className="ask-body">
-        {index === 0 && <p className="ask-kicker reveal-1">Let’s understand a little more about your everyday decisions.</p>}
+        {index === 0 && <p className="ask-kicker reveal-1">{kicker}</p>}
         <h2 className="ask-q reveal-2">{step.question}</h2>
       </div>
 
