@@ -149,7 +149,9 @@ export default function Timeline({ scenario: own, profile, result, assumptions, 
 
   const tabIndex = TABS.findIndex((t) => t.id === horizon);
   const tab = TABS[tabIndex];
-  const look = outlook(horizon, horizon === '10y' ? years.main.final : months.final, horizon === '10y' ? years.main.start : months.start);
+  const shown = horizon === '10y' ? years.main : months;
+  const look = outlook(horizon, shown.final, shown.start);
+  const completedShare = shown.totals.moments ? (shown.totals.direct + shown.totals.returned) / shown.totals.moments : 0;
   const resisted = session.events.filter((e) => e.kind === 'resisted').length;
 
   let sketch = null;
@@ -217,6 +219,11 @@ export default function Timeline({ scenario: own, profile, result, assumptions, 
             is returned to {pctOf(prof.ret)} of the time.
           </li>
           <li>Each completed moment makes the next effort count slightly less; each set-aside moment, slightly more.</li>
+          <li>
+            The follow-through index starts at a neutral 50 for everyone. It rises when more moments are completed (right
+            away or after returning) than set aside, and falls when more are set aside. The {pctOf(result.tendency)} from
+            the simulation is the chance of starting right away; it shapes every moment but is not the starting point.
+          </li>
         </ul>
       </>
     );
@@ -227,7 +234,7 @@ export default function Timeline({ scenario: own, profile, result, assumptions, 
       <>
         <p>
           The faint lines show the same model if every moment were taken on and finished, or if every moment were set aside.
-          This scenario’s line sits between them.
+          This scenario’s line sits between them. All three start at a neutral 50.
         </p>
         <p className="assume-head">What this is not</p>
         <ul>
@@ -279,6 +286,12 @@ export default function Timeline({ scenario: own, profile, result, assumptions, 
                 {look.title}
               </p>
               <p className="small">{look.body}</p>
+              {horizon !== '10m' && (
+                <p className="fine mono">
+                  Follow-through index {Math.round(shown.start * 100)} → {Math.round(shown.final * 100)} out of 100 · tasks
+                  completed {pctOf(completedShare)}, set aside {pctOf(1 - completedShare)}
+                </p>
+              )}
             </div>
             <details className="fold">
               <summary>How was this calculated?</summary>
